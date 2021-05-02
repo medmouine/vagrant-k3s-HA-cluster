@@ -9,7 +9,7 @@
   * [Requirements](#requirements)
   * [Usage](#usage)
     + [Optional](#optional)
-    + [1. Configuration:](#1-configuration-)
+    + [1. Configuration:](#1-configuration)
     + [2. Generate SSH key](#2-generate-ssh-key)
     + [3. Run](#3-run)
     + [4. Fetch cluster config file](#4-fetch-cluster-config-file)
@@ -79,7 +79,7 @@ $ docker run --network host --rm plndr/kube-vip:0.3.1 manifest daemonset \      
   --leaderElection  |  sed 's/path: \/etc\/kubernetes\/admin.conf/path: \/etc\/rancher\/k3s\/k3s.yaml/g' > scripts/manifests/vip.yaml
 ```
 
-### 1. Configuration:
+### 1. Configuration
 You can configure your cluster by editing the `hosts.yaml` file.
 
 Example configuration:
