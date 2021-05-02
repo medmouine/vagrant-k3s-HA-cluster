@@ -5,7 +5,7 @@
   * [Introduction](#introduction)
     + [Motivation](#motivation)
     + [Features](#features)
-    + [Example and base config architecture:](#example-and-base-config-architecture-)
+    + [Example and base config architecture](#example-and-base-config-architecture)
   * [Requirements](#requirements)
   * [Usage](#usage)
     + [Optional](#optional)
@@ -41,7 +41,7 @@ highly available, resource efficient and fully-working cluster, I realized the l
 - [ ] More K3s configuration through YAML config
 - [ ] Configure other Controlplane LB (HAProxy)
 
-### Example and base config architecture:
+### Example and base config architecture
 | Hostname      | Role                        | Ip Address  | OS               | CPUs   | Memory (mb)   |
 | :-------------|:--------------------------- |:----------- |:-----------------|:-------|:------------- |
 | front_lb      | Controlplane LB             | 10.0.0.30   | generic/alpine312| 1      | 512           |
