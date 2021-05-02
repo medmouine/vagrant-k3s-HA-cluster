@@ -1,0 +1,14 @@
+[entryPoints]
+  [entryPoints.controlplane]
+    address = ":6443"
+    [entryPoints.controlplane.http.tls]
+      [[entryPoints.controlplane.http.tls.domains]]
+        main = "10.0.0.30"
+  [entryPoints.ssh_int]
+    address = ":22"
+
+[providers.file]
+  directory = "/tmp/traefikconf/"
+
+[serversTransport]
+  insecureSkipVerify = true

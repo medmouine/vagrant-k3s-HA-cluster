@@ -1,0 +1,5 @@
+**/*.log
+**/*.pdf
+**/__ignore*
+**/.vagrant/
+**/.ssh

@@ -1,0 +1,32 @@
+[http]
+  [http.routers]
+    [http.routers.cluster]
+      service = "k3s"
+      rule = "Host(\"*\")"
+
+  [http.services]
+    [http.services.k3s]
+      [http.services.k3s.loadBalancer]
+        [[http.services.k3s.loadBalancer.servers]]
+          url = "https://10.0.0.11:6443"
+        [[http.services.k3s.loadBalancer.servers]]
+          url = "https://10.0.0.12:6443"
+        [[http.services.k3s.loadBalancer.servers]]
+          url = "https://10.0.0.13:6443"
+
+[tcp]
+  [tcp.routers]
+    [tcp.routers.cluster]
+      service = "ssh"
+      entryPoints = ["ssh_int"]
+      rule = "HostSNI(\"*\")"
+
+  [tcp.services]
+    [tcp.services.ssh]
+      [tcp.services.ssh.loadBalancer]
+        [[tcp.services.ssh.loadBalancer.servers]]
+          address = "10.0.0.11:22"
+        [[tcp.services.ssh.loadBalancer.servers]]
+          address = "10.0.0.12:22"
+        [[tcp.services.ssh.loadBalancer.servers]]
+          address = "10.0.0.13:22"
