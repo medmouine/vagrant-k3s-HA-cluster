@@ -125,6 +125,7 @@ $ k3sup install --skip-install --user root --ip 10.0.0.30 --ssh-key ./.ssh/id_rs
 
 ### 5. Test the cluster
 ```
+$ export KUBECONFIG=$(pwd)/kubeconfig
 $ kubectl get nodes                                                                                                                                                      130
 NAME          STATUS   ROLES                       AGE   VERSION
 kubemaster1   Ready    control-plane,etcd,master   52m   v1.21.0+k3s1
