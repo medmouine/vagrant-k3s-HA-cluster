@@ -3,3 +3,4 @@
 **/__ignore*
 **/.vagrant/
 **/.ssh
+kubeconfig
