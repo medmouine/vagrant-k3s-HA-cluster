@@ -41,5 +41,3 @@ elif [[ "$action" == "worker" ]]; then
         --server-user root \
         --k3s-extra-args "--flannel-iface $interface -t $token --node-ip $ip"
 fi
-
-export KUBECONFIG=/Users/med/laboratoires/lab4/k3s-multimaster-cluster/kubeconfig
