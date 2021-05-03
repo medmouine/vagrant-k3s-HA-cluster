@@ -50,6 +50,7 @@ highly available, resource efficient and fully-working cluster, I realized the l
 - [ ] Document using other VM providers (Libvirt)
 - [ ] More configuration through YAML config (K3s, Ingress Controller...)
 - [ ] Configure other Controlplane LB (HAProxy)
+- [ ] Bundle into a single binary
 
 ### Example and base config architecture
 | Hostname      | Role                        | Ip Address  | OS               | CPUs   | Memory (mb)   |
