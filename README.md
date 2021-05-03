@@ -30,6 +30,11 @@ The k3s default flannel (xvlan) is replaced by [Calico](https://www.projectcalic
 
 K3s uses Traefik as an Ingress Controller by default. In this case, it is replaced by the [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/).
 
+In HA mode, K3s can either use an external data storage to sync its server or an [etcd](https://etcd.io/) cluster internally. In this case, it's the second option (etcd).
+
+
+<img src="https://cdn.thenewstack.io/media/2020/08/0b8d5fc2-k3s-1-1024x671.png" alt="architecture diagram should be here :(" width="700"/>
+
 ### Motivation
 K3s is a lightweight Kubernetes distribution used for Edge-computing and IoT. It comes handy in the case of a local development environment with limited resources amd lacking the infrastructure provided by cloud providers.
 
@@ -56,7 +61,6 @@ highly available, resource efficient and fully-working cluster, I realized the l
 | Kubenode1     | Worker                      | 10.0.0.21   | generic/alpine312| 1      | 1024          |
 | Kubenode2     | Worker                      | 10.0.0.22   | generic/alpine312| 1      | 1024          |
 | Kubenode3     | Worker                      | 10.0.0.23   | generic/alpine312| 1      | 1024          |
-
 
 ## Requirements
 ### System
