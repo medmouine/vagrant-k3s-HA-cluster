@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eu
+set -xu
 
 while [ $# -gt 0 ]; do
    if [[ $1 == *"--"* ]]; then

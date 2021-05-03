@@ -1,6 +1,5 @@
 #!/bin/sh
-set -x
-set -eu
+set -xeu
 
 sudo mv /tmp/id_rsa*  /root/.ssh/
 

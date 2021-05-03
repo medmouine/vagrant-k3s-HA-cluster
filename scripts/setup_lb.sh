@@ -1,6 +1,5 @@
 #!/bin/bash
-set -eu
-set -x
+set -xeu
 
 curl https://github.com/containous/traefik/releases/download/v2.4.8/traefik_v2.4.8_linux_amd64.tar.gz -o /tmp/traefik.tar.gz -L
 cd /tmp/

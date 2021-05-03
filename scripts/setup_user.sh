@@ -1,6 +1,5 @@
 #!/bin/ash
-set -eu
-set -x
+set -xeu
 
 apk add --no-cache curl
 apk add --no-cache cni-plugins --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community

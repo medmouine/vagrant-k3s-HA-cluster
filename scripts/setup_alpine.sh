@@ -1,6 +1,5 @@
 #!/bin/ash
-set -eu
-set -x
+set -xeu
 
 echo "cgroup /sys/fs/cgroup cgroup defaults 0 0" >> /etc/fstab
 swapoff -a
