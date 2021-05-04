@@ -47,12 +47,16 @@ highly available, resource efficient and fully-working cluster, I realized the l
 - [X] Working cluster
 - [x] Editable configuration
 - [x] Main documentation
+- [ ] Document performance benchmarking and different architectures comparison
+- [ ] Investigate MetalLB for external Loadbalancing
+- [ ] Investigate using [Multipass](https://multipass.run/) instead of Vagrant
 - [ ] Document Ingress controller integration and different layer networking solutions
 - [ ] Fix start-up bug when cluster-init (alpine cgroups bug)
 - [ ] Adapt configuration and scripts to use different VM images (Ubuntu/bionic64...)
 - [ ] Invrestigate K3OS usage and integration
 - [ ] Document and configure using other VM providers (Libvirt...)
 - [ ] More configuration through YAML config (K3s, Ingress Controller...)
+- [ ] Support different config formats (TOML, JSON...)
 - [ ] Document and Configure other Controlplane LB (HAProxy)
 - [ ] Bundle into a single package/script/binary
 
@@ -120,7 +124,7 @@ Resources:
 - [k3s releases](https://github.com/k3s-io/k3s/releases) 
 - [Vagrant boxes registry](https://app.vagrantup.com/boxes/search)
 - [Vagrant + VirtualBox networking documentation](https://www.vagrantup.com/docs/providers/virtualbox/networking)
-- 
+
 Example configuration:
 ```yaml
 version: "v1.21.0+k3s1"
