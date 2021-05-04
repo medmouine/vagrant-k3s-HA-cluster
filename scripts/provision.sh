@@ -15,10 +15,10 @@ if [[ "$action" == "init" ]]; then
         --cluster \
         --tls-san $vip \
         --k3s-version $version \
-        --k3s-extra-args "-t $token --flannel-iface $interface --flannel-backend=none  --disable servicelb --disable traefik --disable-network-policy --cluster-cidr=192.168.0.0/16 --tls-san $vip --tls-san $ip" \
+        --k3s-extra-args "-t $token --flannel-iface $interface --flannel-backend=none  --no-deploy servicelb --no-deploy traefik --disable-network-policy --cluster-cidr=192.168.0.0/16 --tls-san $vip --tls-san $ip" \
         --merge \
         --ssh-key .ssh/id_rsa \
-        --user root
+        --user root || true
 
 elif [[ "$action" == "join" ]]; then
     k3sup join --print-command \
@@ -29,7 +29,10 @@ elif [[ "$action" == "join" ]]; then
         --server-ip $sip \
         --server \
         --server-user root \
-        --k3s-extra-args "-t $token --flannel-iface $interface --tls-san $vip --tls-san $ip"
+        --k3s-extra-args "-t $token --flannel-iface $interface --no-deploy servicelb --no-deploy traefik --tls-san $vip --tls-san $ip"
+
+    # to regenerate nginx manifest, you can then use the helm command to output the file directly (helm template)
+    # arkade install ingress-nginx --host-mode --namespace default
 
 elif [[ "$action" == "worker" ]]; then
     k3sup join --print-command \

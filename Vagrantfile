@@ -49,10 +49,8 @@ Vagrant.configure("2") do |config|
         vb.customize ["modifyvm", :id, "--cpus", NODE_CONFIG["masters"]["resources"]["cpu"]]
       end
 
-      kubemasters.vm.provision "file", source: "./scripts/manifests/vip.yaml", destination: "/tmp/manifests/vip.yaml"
-      kubemasters.vm.provision "file", source: "./scripts/manifests/calico-config.yaml", destination: "/tmp/manifests/calico-config.yaml"
+      kubemasters.vm.provision "file", source: "./scripts/manifests/.", destination: "/tmp/manifests/"
       kubemasters.vm.provision "shell", privileged: true, inline: "curl https://docs.projectcalico.org/manifests/tigera-operator.yaml > /tmp/manifests/_tigera-operator.yaml"
-      kubemasters.vm.provision "shell", privileged: true, inline: "curl https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.46.0/deploy/static/provider/baremetal/deploy.yaml > /tmp/manifests/_nginx.yaml"
       kubemasters.vm.provision "shell", privileged: true, inline: "curl https://kube-vip.io/manifests/rbac.yaml > /tmp/manifests/_rbac.yaml"
       kubemasters.vm.provision "shell", privileged: true, inline: "mkdir -p /var/lib/rancher/k3s/server/manifests && mv /tmp/manifests/*.yaml /var/lib/rancher/k3s/server/manifests/"
       kubemasters.trigger.after :up do |t|
