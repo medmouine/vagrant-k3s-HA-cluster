@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -xeu
 
 sudo mv /tmp/id_rsa*  /root/.ssh/

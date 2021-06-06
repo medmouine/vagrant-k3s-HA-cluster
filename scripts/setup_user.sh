@@ -1,11 +1,7 @@
-#!/bin/ash
+#!/bin/bash
 set -xeu
 
 apk add --no-cache curl
-apk add --no-cache cni-plugins --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
-
-export PATH=$PATH:/usr/share/cni-plugins/bin
-echo -e '#!/bin/sh\nexport PATH=$PATH:/usr/share/cni-plugins/bin' > /etc/profile.d/cni.sh
 
 apk add iptables
 apk add sudo

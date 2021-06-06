@@ -4,3 +4,5 @@
 **/.vagrant/
 **/.ssh
 kubeconfig
+**/tags
+**/.idea/

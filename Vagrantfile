@@ -50,7 +50,6 @@ Vagrant.configure("2") do |config|
       end
 
       kubemasters.vm.provision "file", source: "./scripts/manifests/.", destination: "/tmp/manifests/"
-      kubemasters.vm.provision "shell", privileged: true, inline: "curl https://docs.projectcalico.org/manifests/tigera-operator.yaml > /tmp/manifests/_tigera-operator.yaml"
       kubemasters.vm.provision "shell", privileged: true, inline: "curl https://kube-vip.io/manifests/rbac.yaml > /tmp/manifests/_rbac.yaml"
       kubemasters.vm.provision "shell", privileged: true, inline: "mkdir -p /var/lib/rancher/k3s/server/manifests && mv /tmp/manifests/*.yaml /var/lib/rancher/k3s/server/manifests/"
       kubemasters.trigger.after :up do |t|
