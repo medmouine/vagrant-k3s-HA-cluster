@@ -26,7 +26,7 @@ This repository contains the Vagrantfile and scripts to easely configure a Highl
 
 The cluster is composed of Controlplane nodes (default: 3), Worker nodes (default: 3), a Controlplane Loadbalancer ([Traefik](https://doc.traefik.io/traefik/providers/overview/)).
 
-The k3s default flannel (xvlan) is replaced by [Calico](https://www.projectcalico.org/) as the base CNI due to an IP Forwarding bug when using K3s in VirtualBox VMs. 
+The k3s default flannel (vxlan) is replaced by [Calico](https://www.projectcalico.org/) as the base CNI due to an IP Forwarding bug when using K3s in VirtualBox VMs. 
 
 K3s uses Traefik as an Ingress Controller by default. In this case, it is replaced by the [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/).
 
@@ -47,10 +47,18 @@ highly available, resource efficient and fully-working cluster, I realized the l
 - [X] Working cluster
 - [x] Editable configuration
 - [x] Main documentation
-- [ ] Document using other VM providers (Libvirt)
+- [ ] Document performance benchmarking and different architectures comparison
+- [ ] Investigate MetalLB for external Loadbalancing
+- [ ] Investigate using [Multipass](https://multipass.run/) instead of Vagrant
+- [ ] Document Ingress controller integration and different layer networking solutions
+- [ ] Fix start-up bug when cluster-init (alpine cgroups bug)
+- [ ] Adapt configuration and scripts to use different VM images (Ubuntu/bionic64...)
+- [ ] Invrestigate K3OS usage and integration
+- [ ] Document and configure using other VM providers (Libvirt...)
 - [ ] More configuration through YAML config (K3s, Ingress Controller...)
-- [ ] Configure other Controlplane LB (HAProxy)
-- [ ] Bundle into a single binary
+- [ ] Support different config formats (TOML, JSON...)
+- [ ] Document and Configure other Controlplane LB (HAProxy)
+- [ ] Bundle into a single package/script/binary
 
 ### Example and base config architecture
 | Hostname      | Role                        | Ip Address  | OS               | CPUs   | Memory (mb)   |
@@ -116,7 +124,7 @@ Resources:
 - [k3s releases](https://github.com/k3s-io/k3s/releases) 
 - [Vagrant boxes registry](https://app.vagrantup.com/boxes/search)
 - [Vagrant + VirtualBox networking documentation](https://www.vagrantup.com/docs/providers/virtualbox/networking)
-- 
+
 Example configuration:
 ```yaml
 version: "v1.21.0+k3s1"
