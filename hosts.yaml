@@ -4,17 +4,17 @@ token: "agent-token"
 ip_range: "10.0.0."
 interface: "eth1"
 masters:
-  count: 3
+  count: 2
   resources:
     memory: "2048"
     cpu: "2"
 workers:
-  count: 3
+  count: 4
   resources:
     memory: "1024"
     cpu: "1"
 lb:
-  id: 30
+  ip: "10.0.1.30"
   resources:
     memory: "512"
     cpu: "1"

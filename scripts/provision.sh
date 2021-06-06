@@ -20,9 +20,6 @@ if [[ "$action" == "init" ]]; then
         --ssh-key .ssh/id_rsa \
         --user root || true
 
-    sleep 10
-
-    kubectl taint --overwrite node $(hostname) node-role.kubernetes.io/master=true:NoSchedule
 elif [[ "$action" == "join" ]]; then
     k3sup join --print-command \
         --ip $ip \
@@ -33,9 +30,6 @@ elif [[ "$action" == "join" ]]; then
         --server \
         --server-user root \
         --k3s-extra-args "-t $token --flannel-iface $interface --flannel-backend=wireguard --no-deploy servicelb --no-deploy traefik --tls-san $vip --tls-san $ip --node-external-ip $ip --node-ip $ip"
-
-    sleep 10
-    kubectl taint --overwrite node $(hostname) node-role.kubernetes.io/master=true:NoSchedule
 
     # to regenerate nginx manifest, you can then use the helm command to output the file directly (helm template)
     # arkade install ingress-nginx --host-mode --namespace default

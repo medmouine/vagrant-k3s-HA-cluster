@@ -5,7 +5,7 @@ NODE_CONFIG = YAML.load_file('hosts.yaml')
 
 IMAGE = NODE_CONFIG["image"]
 IP_RANGE = NODE_CONFIG["ip_range"]
-VIP = "#{IP_RANGE}#{NODE_CONFIG["lb"]["id"]}"
+VIP = "#{NODE_CONFIG["lb"]["ip"]}"
 K3S_VERSION = NODE_CONFIG["version"]
 MASTER_COUNT = NODE_CONFIG["masters"]["count"]
 NODE_COUNT = NODE_CONFIG["workers"]["count"]
