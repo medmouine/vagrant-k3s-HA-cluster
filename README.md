@@ -102,7 +102,7 @@ $ arkade get docker
 As you can see in the [Vagrantfile](https://github.com/medmouine/vagrant-k3s-HA-cluster/blob/main/Vagrantfile#L14), you will need to install 2 vagrant plugins:
 ```
 $ vagrant plugin install vagrant-vbguest
-$ vagramt plugin install vagrant-reload
+$ vagrant plugin install vagrant-reload
 ```
 
 ## Usage
