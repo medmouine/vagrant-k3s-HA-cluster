@@ -1,0 +1,145 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: local-registry
+---
+# Source: docker-registry/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: local-registry-docker-registry-secret
+  namespace: local-registry
+  labels:
+    app: docker-registry
+    chart: docker-registry-1.10.1
+    heritage: Helm
+    release: local-registry
+type: Opaque
+data:
+  haSharedSecret: "UFhBWDR5SUxKNHZ5QkZ1NA=="
+---
+# Source: docker-registry/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-registry-docker-registry-config
+  namespace: local-registry
+  labels:
+    app: docker-registry
+    chart: docker-registry-1.10.1
+    heritage: Helm
+    release: local-registry
+data:
+  config.yml: |-
+    health:
+      storagedriver:
+        enabled: true
+        interval: 10s
+        threshold: 3
+    http:
+      addr: :5000
+      headers:
+        X-Content-Type-Options:
+        - nosniff
+    log:
+      fields:
+        service: registry
+    storage:
+      cache:
+        blobdescriptor: inmemory
+    version: 0.1
+---
+# Source: docker-registry/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: local-registry-docker-registry
+  namespace: local-registry
+  labels:
+    app: docker-registry
+    chart: docker-registry-1.10.1
+    release: local-registry
+    heritage: Helm
+spec:
+  type: NodePort
+  ports:
+    - port: 5000
+      protocol: TCP
+      name: http-5000
+      targetPort: 5000
+      nodePort: 30500
+  selector:
+    app: docker-registry
+    release: local-registry
+---
+# Source: docker-registry/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: local-registry-docker-registry
+  namespace: local-registry
+  labels:
+    app: docker-registry
+    chart: docker-registry-1.10.1
+    release: local-registry
+    heritage: Helm
+spec:
+  selector:
+    matchLabels:
+      app: docker-registry
+      release: local-registry
+  replicas: 1
+  minReadySeconds: 5
+  template:
+    metadata:
+      namespace: local-registry
+      labels:
+        app: docker-registry
+        release: local-registry
+      annotations:
+        checksum/config: ae69f89858873c4aab95d33b6ca2e4212762c05a1ff1ad6f8a360cbf1a4ecdf3
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      containers:
+        - name: docker-registry
+          image: "registry:2.7.1"
+          imagePullPolicy: IfNotPresent
+          command:
+          - /bin/registry
+          - serve
+          - /etc/docker/registry/config.yml
+          ports:
+            - containerPort: 5000
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5000
+          resources:
+            {}
+          env:
+            - name: REGISTRY_HTTP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: local-registry-docker-registry-secret
+                  key: haSharedSecret
+            - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+              value: "/var/lib/registry"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/registry/
+            - name: "local-registry-docker-registry-config"
+              mountPath: "/etc/docker/registry"
+      nodeSelector:
+        node-role.kubernetes.io/master: "true"
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: local-registry-docker-registry-config
+          configMap:
+            name: local-registry-docker-registry-config

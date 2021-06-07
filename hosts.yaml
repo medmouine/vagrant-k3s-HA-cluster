@@ -14,7 +14,11 @@ workers:
     memory: "1024"
     cpu: "1"
 lb:
-  ip: "10.0.1.30"
+  ip: "10.0.0.30"
   resources:
     memory: "512"
     cpu: "1"
+local_registry:
+  enabled: true
+  port: 30500
+  host: "localregistry.lc"

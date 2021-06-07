@@ -50,6 +50,12 @@ Vagrant.configure("2") do |config|
       end
 
       kubemasters.vm.provision "file", source: "./scripts/manifests/.", destination: "/tmp/manifests/"
+      if NODE_CONFIG["local_registry"]["enabled"] == true
+        kubemasters.vm.provision "file", source: "./scripts/optional/local-repository.yaml", destination: "/tmp/manifests/local_registry.yaml"
+        kubemasters.vm.provision "file", source: "./scripts/optional/registries.yaml", destination: "/tmp/manifests/registries.yaml"
+        kubemasters.vm.provision "shell", privileged: true, inline: "mkdir -p /etc/rancher/k3s/ && mv /tmp/manifests/registries.yaml /etc/rancher/k3s/registries.yaml"
+        kubemasters.vm.provision "shell", privileged: true, inline: "echo \"#{VIP} #{NODE_CONFIG["local_registry"]["host"]}\" >> /etc/hosts"
+      end
       kubemasters.vm.provision "shell", privileged: true, inline: "curl https://kube-vip.io/manifests/rbac.yaml > /tmp/manifests/_rbac.yaml"
       kubemasters.vm.provision "shell", privileged: true, inline: "mkdir -p /var/lib/rancher/k3s/server/manifests && mv /tmp/manifests/*.yaml /var/lib/rancher/k3s/server/manifests/"
       kubemasters.trigger.after :up do |t|
@@ -77,7 +83,11 @@ Vagrant.configure("2") do |config|
         vb.customize ["modifyvm", :id, "--memory", NODE_CONFIG["workers"]["resources"]["memory"]]
         vb.customize ["modifyvm", :id, "--cpus", NODE_CONFIG["workers"]["resources"]["cpu"]]
       end
-
+      if NODE_CONFIG["local_registry"]["enabled"] == true
+        kubenodes.vm.provision "file", source: "./scripts/optional/registries.yaml", destination: "/tmp/manifests/registries.yaml"
+        kubenodes.vm.provision "shell", privileged: true, inline: "mkdir -p /etc/rancher/k3s/ && mv /tmp/manifests/registries.yaml /etc/rancher/k3s/registries.yaml"
+        kubenodes.vm.provision "shell", privileged: true, inline: "echo \"#{VIP} #{NODE_CONFIG["local_registry"]["host"]}\" >> /etc/hosts"
+      end
       kubenodes.trigger.after :up do |t|
         t.info = "w#{i} Provisioning: Worker. HOST:kubenode#{i}, IP: #{IP}, args worker #{IP} #{VIP} #{K3S_VERSION}"
         t.run = { path: "scripts/provision.sh", args: "--action worker --interface #{NODE_CONFIG["interface"]} --ip #{IP} --vip #{VIP} --version #{K3S_VERSION} --token #{NODE_CONFIG["token"]}" }

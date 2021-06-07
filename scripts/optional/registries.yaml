@@ -1,0 +1,10 @@
+mirrors:
+  docker.io:
+    endpoint:
+      - "http://localregistry.lc:30500"
+  localregistry.lc:
+    endpoint:
+      - "http://localregistry.lc:30500"       
+  localregistry.lc:30500:
+    endpoint:
+      - "http://localregistry.lc:30500"  
