@@ -24,9 +24,9 @@
 
 This repository contains the Vagrantfile and scripts to easely configure a Highly Available Kubernetes (K3s) cluster. 
 
-The cluster is composed of Controlplane nodes (default: 3), Worker nodes (default: 3), a Controlplane Loadbalancer ([Traefik](https://doc.traefik.io/traefik/providers/overview/)).
+The cluster is composed of Controlplane nodes (default: 2), Worker nodes (default: 4), a Controlplane Loadbalancer ([Traefik](https://doc.traefik.io/traefik/providers/overview/)).
 
-The k3s default flannel (vxlan) is replaced by [Calico](https://www.projectcalico.org/) as the base CNI due to an IP Forwarding bug when using K3s in VirtualBox VMs. 
+The k3s default flannel (vxlan) is replaced by [Wireguard](https://www.wireguard.com/) as the base CNI due to an IP Forwarding bug when using K3s in VirtualBox VMs. 
 
 K3s uses Traefik as an Ingress Controller by default. In this case, it is replaced by the [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/).
 
@@ -36,9 +36,9 @@ In HA mode, K3s can either use an external data storage to sync its server or an
 <img src="https://cdn.thenewstack.io/media/2020/08/0b8d5fc2-k3s-1-1024x671.png" alt="architecture diagram should be here :(" width="700"/>
 
 ### Motivation
-K3s is a lightweight Kubernetes distribution used for Edge-computing and IoT. It comes handy in the case of a local development environment with limited resources amd lacking the infrastructure provided by cloud providers.
+K3s is a lightweight Kubernetes distribution used for Edge-computing and IoT. It comes handy in the case of a local development environment with limited resources and when lacking the infrastructure provided by cloud providers.
 
-I built this project in the context of the workshops for the [Cloud Native application and DevOps](https://www.ulaval.ca/etudes/cours/glo-4008-applications-infonuagiques-natives-et-devops) course at Laval University. 
+I built this project in the context of the [Cloud Native applications and DevOps course](https://www.ulaval.ca/etudes/cours/glo-4008-applications-infonuagiques-natives-et-devops) of the Computer Science and Software Engineering department at Laval University. 
 
 After wasting days debugging and finetuning the configuration to achieve a 
 highly available, resource efficient and fully-working cluster, I realized the lack of documentation and resources regarding this use-case.
@@ -66,10 +66,10 @@ highly available, resource efficient and fully-working cluster, I realized the l
 | front_lb      | Controlplane LB             | 10.0.0.30   | generic/alpine312| 1      | 512           |
 | Kubemaster1   | Controlplane + cluster init | 10.0.0.11   | generic/alpine312| 2      | 2048          |
 | Kubemaster2   | Controlplane                | 10.0.0.12   | generic/alpine312| 2      | 2048          |
-| Kubemaster3   | Controlplane                | 10.0.0.13   | generic/alpine312| 2      | 2048          |
 | Kubenode1     | Worker                      | 10.0.0.21   | generic/alpine312| 1      | 1024          |
 | Kubenode2     | Worker                      | 10.0.0.22   | generic/alpine312| 1      | 1024          |
 | Kubenode3     | Worker                      | 10.0.0.23   | generic/alpine312| 1      | 1024          |
+| Kubenode4     | Worker                      | 10.0.0.24   | generic/alpine312| 1      | 1024          |
 
 ## Requirements
 ### System
@@ -163,7 +163,11 @@ $ vagrant up
 ### 4. Fetch cluster config file
 To use the Kubernetes API from your local host run the following command:
 ```
-$ k3sup install --skip-install --user root --ip 10.0.0.30 --ssh-key ./.ssh/id_rsa
+$ ./finalize_setup.sh
+```
+This script will taint the control plane nodes and pull the Kubeconfig to the current directory. Depending on you environment, you might need to export the configuration localtion manually to enable it as the default KubeConfig:
+```
+$ export KUBECONFIG=$(pwd)/kubeconfig 
 ```
 
 ### 5. Test the cluster
