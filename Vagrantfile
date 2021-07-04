@@ -45,6 +45,12 @@ Vagrant.configure("2") do |config|
                           repository_config: NODE_CONFIG["git_repo"])
 
       provision_vip_config(vm: kubemasters)
+      def configure_trigger_run (trigger:, info: "", path:, args: "")
+        if info != ""
+          trigger.info = info
+        end
+        trigger.run = { path: path, args: args }
+      end
       kubemasters.trigger.after :up do |t|
         info = ""
         args = ""
