@@ -1,0 +1,641 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: local-repository
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitea-ingress
+  namespace: local-repository
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: localrepository.lc
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: gitea-http
+            port:
+              number: 3000
+  - host: ssh.localrepository.lc
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: gitea-ssh
+            port:
+              number: 22
+---
+# Source: gitea/charts/memcached/templates/secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: local-repository
+  name: gitea-memcached
+  labels:
+    app.kubernetes.io/name: memcached
+    helm.sh/chart: memcached-4.2.20
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+data:
+  memcached-password: ""
+---
+# Source: gitea/charts/postgresql/templates/secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: local-repository
+  name: gitea-postgresql
+  labels:
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-9.7.2
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+data:
+  postgresql-password: "Z2l0ZWE="
+---
+# Source: gitea/templates/gitea/config.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: local-repository
+  name: gitea
+  labels:
+    helm.sh/chart: gitea-3.1.4
+    app: gitea
+    app.kubernetes.io/name: gitea
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/version: "1.14.2"
+    version: "1.14.2"
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+stringData:
+  app.ini: |-
+
+    [cache]
+    ADAPTER = memcache
+    ENABLED = true
+    HOST = gitea-memcached.local-repository.svc.cluster.local:11211
+
+    [database]
+    DB_TYPE = postgres
+    HOST = gitea-postgresql.local-repository.svc.cluster.local:5432
+    NAME = gitea
+    PASSWD = gitea
+    USER = gitea
+
+    [metrics]
+    ENABLED = false
+
+    [repository]
+    ROOT = /data/git/gitea-repositories
+
+    [security]
+    INSTALL_LOCK = true
+    PASSWORD_COMPLEXITY = off
+
+    [server]
+    APP_DATA_PATH = /data
+    DOMAIN = git.example.com
+    ENABLE_PPROF = false
+    HTTP_PORT = 3000
+    PROTOCOL = http
+    ROOT_URL = http://git.example.com
+    SSH_DOMAIN = git.example.com
+    SSH_LISTEN_PORT = 22
+    SSH_PORT = 22
+---
+# Source: gitea/templates/gitea/init.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: local-repository
+  name: gitea-init
+  labels:
+    helm.sh/chart: gitea-3.1.4
+    app: gitea
+    app.kubernetes.io/name: gitea
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/version: "1.14.2"
+    version: "1.14.2"
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+stringData:
+  init_gitea.sh: |-
+    #!/bin/bash
+    chown 1000:1000 /data
+    mkdir -p /data/git/.ssh
+    chmod -R 700 /data/git/.ssh
+    mkdir -p /data/gitea/conf
+
+    # prepare temp directory structure
+    mkdir -p "${GITEA_TEMP}"
+    chown 1000:1000 "${GITEA_TEMP}"
+    chmod ug+rwx "${GITEA_TEMP}"
+
+    # Copy config file to writable volume
+    cp /etc/gitea/conf/app.ini /data/gitea/conf/app.ini
+    chmod a+rwx /data/gitea/conf/app.ini
+    # Wait for database to become avialble
+    nc -v -w2 -z gitea-postgresql 5432 && \
+    su git -c ' \
+    set -x; \
+    gitea migrate; \
+    gitea admin create-user --username  "${GITEA_ADMIN_USERNAME}" --password "${GITEA_ADMIN_PASSWORD}" --email gitea@local.domain --admin --must-change-password=false \
+    || \
+    gitea admin change-password --username "${GITEA_ADMIN_USERNAME}" --password "${GITEA_ADMIN_PASSWORD}" \
+    || \
+    gitea admin user create --username  "${GITEA_ADMIN_USERNAME}" --password "${GITEA_ADMIN_PASSWORD}" --email gitea@local.domain --admin --must-change-password=false \
+    || \
+    gitea admin user change-password --username "${GITEA_ADMIN_USERNAME}" --password "${GITEA_ADMIN_PASSWORD}"; \
+    '
+---
+# Source: gitea/charts/memcached/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: local-repository
+  name: gitea-memcached
+  labels:
+    app.kubernetes.io/name: memcached
+    helm.sh/chart: memcached-4.2.20
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - name: memcache
+      port: 11211
+      targetPort: memcache
+      nodePort: null
+  selector:
+    app.kubernetes.io/name: memcached
+    app.kubernetes.io/instance: gitea
+---
+# Source: gitea/charts/postgresql/templates/svc-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: local-repository
+  name: gitea-postgresql-headless
+  labels:
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-9.7.2
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: tcp-postgresql
+      port: 5432
+      targetPort: tcp-postgresql
+  selector:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/instance: gitea
+---
+# Source: gitea/charts/postgresql/templates/svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: local-repository
+  name: gitea-postgresql
+  labels:
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-9.7.2
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+spec:
+  type: ClusterIP
+  ports:
+    - name: tcp-postgresql
+      port: 5432
+      targetPort: tcp-postgresql
+  selector:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/instance: gitea
+    role: master
+---
+# Source: gitea/templates/gitea/http-svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: local-repository
+  name: gitea-http
+  labels:
+    helm.sh/chart: gitea-3.1.4
+    app: gitea
+    app.kubernetes.io/name: gitea
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/version: "1.14.2"
+    version: "1.14.2"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    null
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+  selector:
+    app.kubernetes.io/name: gitea
+    app.kubernetes.io/instance: gitea
+---
+# Source: gitea/templates/gitea/ssh-svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: local-repository
+  name: gitea-ssh
+  labels:
+    helm.sh/chart: gitea-3.1.4
+    app: gitea
+    app.kubernetes.io/name: gitea
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/version: "1.14.2"
+    version: "1.14.2"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    null
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: ssh
+    port: 22
+    targetPort: 22
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: gitea
+    app.kubernetes.io/instance: gitea
+---
+# Source: gitea/charts/memcached/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: local-repository
+  name: gitea-memcached
+  labels:
+    app.kubernetes.io/name: memcached
+    helm.sh/chart: memcached-4.2.20
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: memcached
+      app.kubernetes.io/instance: gitea
+  replicas: 1
+  template:
+    metadata:
+      namespace: local-repository
+      labels:
+        app.kubernetes.io/name: memcached
+        helm.sh/chart: memcached-4.2.20
+        app.kubernetes.io/instance: gitea
+        app.kubernetes.io/managed-by: Helm
+    spec:      
+      securityContext:
+        fsGroup: 1001
+        runAsUser: 1001
+      containers:
+        - name: memcached
+          image: docker.io/bitnami/memcached:1.6.6-debian-10-r54
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - /run.sh
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: MEMCACHED_USERNAME
+              value: ""
+            - name: MEMCACHED_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-memcached
+                  key: memcached-password
+          ports:
+            - name: memcache
+              containerPort: 11211
+          livenessProbe:
+            tcpSocket:
+              port: memcache
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            tcpSocket:
+              port: memcache
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            periodSeconds: 5
+          resources:
+            limits: {}
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            readOnlyRootFilesystem: false
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+# Source: gitea/charts/postgresql/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: local-repository
+  name: gitea-postgresql
+  labels:
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-9.7.2
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+spec:
+  serviceName: gitea-postgresql-headless
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql
+      app.kubernetes.io/instance: gitea
+      role: master
+  template:
+    metadata:
+      namespace: local-repository
+      name: gitea-postgresql
+      labels:
+        app.kubernetes.io/name: postgresql
+        helm.sh/chart: postgresql-9.7.2
+        app.kubernetes.io/instance: gitea
+        app.kubernetes.io/managed-by: Helm
+        role: master
+    spec:      
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: gitea-postgresql
+          image: docker.io/bitnami/postgresql:11.9.0-debian-10-r34
+          imagePullPolicy: "IfNotPresent"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            runAsUser: 1001
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: POSTGRESQL_PORT_NUMBER
+              value: "5432"
+            - name: POSTGRESQL_VOLUME_DIR
+              value: "/bitnami/postgresql"
+            - name: PGDATA
+              value: "/bitnami/postgresql/data"
+            - name: POSTGRES_USER
+              value: "gitea"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-postgresql
+                  key: postgresql-password
+            - name: POSTGRES_DB
+              value: "gitea"
+            - name: POSTGRESQL_ENABLE_LDAP
+              value: "no"
+            - name: POSTGRESQL_ENABLE_TLS
+              value: "no"
+            - name: POSTGRESQL_LOG_HOSTNAME
+              value: "false"
+            - name: POSTGRESQL_LOG_CONNECTIONS
+              value: "false"
+            - name: POSTGRESQL_LOG_DISCONNECTIONS
+              value: "false"
+            - name: POSTGRESQL_PGAUDIT_LOG_CATALOG
+              value: "off"
+            - name: POSTGRESQL_CLIENT_MIN_MESSAGES
+              value: "error"
+            - name: POSTGRESQL_SHARED_PRELOAD_LIBRARIES
+              value: "pgaudit"
+          ports:
+            - name: tcp-postgresql
+              containerPort: 5432
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U "gitea" -d "dbname=gitea" -h 127.0.0.1 -p 5432
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - -e
+                - |
+                  exec pg_isready -U "gitea" -d "dbname=gitea" -h 127.0.0.1 -p 5432
+                  [ -f /opt/bitnami/postgresql/tmp/.initialized ] || [ -f /bitnami/postgresql/.initialized ]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 6
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: data
+              mountPath: /bitnami/postgresql
+              subPath: 
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "10Gi"
+---
+# Source: gitea/templates/gitea/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: local-repository
+  name: gitea
+  labels:
+    helm.sh/chart: gitea-3.1.4
+    app: gitea
+    app.kubernetes.io/name: gitea
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/version: "1.14.2"
+    version: "1.14.2"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gitea
+      app.kubernetes.io/instance: gitea
+  serviceName: gitea
+  template:
+    metadata:
+      namespace: local-repository
+      annotations:
+        checksum/config: 5f12053f9b87fdc8c852ace2b0e2f9a4b9e2692b2039f5a64027f66e785d1468
+        checksum/ldap: 00b7af41c86021efd76987f55a6e6aa17a497e98f2a48b9c2f71d5c0295ed342
+        checksum/oauth: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      labels:
+        helm.sh/chart: gitea-3.1.4
+        app: gitea
+        app.kubernetes.io/name: gitea
+        app.kubernetes.io/instance: gitea
+        app.kubernetes.io/version: "1.14.2"
+        version: "1.14.2"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: init
+          image: "gitea/gitea:1.14.2"
+          command: ["/usr/sbin/init_gitea.sh"]
+          env:
+            - name: GITEA_APP_INI
+              value: /data/gitea/conf/app.ini
+            - name: GITEA_CUSTOM
+              value: /data/gitea
+            - name: GITEA_WORK_DIR
+              value: /data
+            - name: GITEA_TEMP
+              value: /tmp/gitea
+            - name: GITEA_LDAP_BIND_DN
+              value: ""
+            - name: GITEA_ADMIN_PASSWORD
+              value: ""
+            - name: GITEA_ADMIN_USERNAME
+              value: "gitea_admin"
+            - name: GITEA_ADMIN_PASSWORD
+              value: "gitea_admin"
+          volumeMounts:
+            - name: init
+              mountPath: /usr/sbin
+            - name: temp
+              mountPath: /tmp
+            - name: config
+              mountPath: /etc/gitea/conf
+            - name: data
+              mountPath: /data
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: gitea
+          image: "gitea/gitea:1.14.2"
+          imagePullPolicy: Always
+          env:
+            # SSH Port values have to be set here as well for openssh configuration
+            - name: SSH_LISTEN_PORT
+              value: "22"
+            - name: SSH_PORT
+              value: "22"
+            - name: GITEA_APP_INI
+              value: /data/gitea/conf/app.ini
+            - name: GITEA_CUSTOM
+              value: /data/gitea
+            - name: GITEA_WORK_DIR
+              value: /data
+            - name: GITEA_TEMP
+              value: /tmp/gitea
+            - name: TMPDIR
+              value: /tmp/gitea
+          ports:
+            - name: ssh
+              containerPort: 22
+            - name: http
+              containerPort: 3000
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 200
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 10
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            {}
+          securityContext:
+            {}
+          volumeMounts:
+            - name: temp
+              mountPath: /tmp
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: init
+          secret:
+            secretName: gitea-init
+            defaultMode: 0777
+        - name: config
+          secret:
+            secretName: gitea
+        - name: temp
+          emptyDir: {}
+        - name: data
+          emptyDir: {}
+---
+# Source: gitea/templates/tests/test-http-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: local-repository
+  name: "gitea-test-connection"
+  labels:
+    helm.sh/chart: gitea-3.1.4
+    app: gitea
+    app.kubernetes.io/name: gitea
+    app.kubernetes.io/instance: gitea
+    app.kubernetes.io/version: "1.14.2"
+    version: "1.14.2"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args:  ['gitea-http:3000']
+  restartPolicy: Never
