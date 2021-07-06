@@ -44,9 +44,13 @@ After wasting days debugging and finetuning the configuration to achieve a
 highly available, resource efficient and fully-working cluster, I realized the lack of documentation and resources regarding this use-case.
 
 ### Features
-- [X] Working cluster
+- [X] High availability (Multiple control-planes) 
+- [X] Load balanced Control-planes (Traefik)
 - [x] Editable configuration
-- [x] Main documentation
+- [X] Local image registry
+- [X] Local git repository
+
+### To-dos
 - [ ] Document performance benchmarking and different architectures comparison
 - [ ] Investigate MetalLB for external Loadbalancing
 - [ ] Investigate using [Multipass](https://multipass.run/) instead of Vagrant
@@ -59,6 +63,7 @@ highly available, resource efficient and fully-working cluster, I realized the l
 - [ ] Support different config formats (TOML, JSON...)
 - [ ] Document and Configure other Controlplane LB (HAProxy)
 - [ ] Bundle into a single package/script/binary
+
 
 ### Example and base config architecture
 | Hostname      | Role                        | Ip Address  | OS               | CPUs   | Memory (mb)   |
@@ -161,13 +166,9 @@ $ vagrant up
 ```
 
 ### 4. Fetch cluster config file
-To use the Kubernetes API from your local host run the following command:
+To use the Kubernetes API from your local host you must execute the `finalize_setup.sh` script. This script will also export the `KUBECONFIG` environment variable, so you must *source* it instead of just running it:
 ```
-$ ./finalize_setup.sh
-```
-This script will taint the control plane nodes and pull the Kubeconfig to the current directory. Depending on you environment, you might need to export the configuration localtion manually to enable it as the default KubeConfig:
-```
-$ export KUBECONFIG=$(pwd)/kubeconfig 
+$ source ./finalize_setup.sh
 ```
 
 ### 5. Test the cluster
