@@ -1,6 +1,10 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+require './ruby_modules/provisioning.rb'
+require './ruby_modules/optionals.rb'
+require './ruby_modules/vm_configuration.rb'
+
 NODE_CONFIG = YAML.load_file('hosts.yaml')
 
 IMAGE = NODE_CONFIG["image"]
@@ -12,28 +16,16 @@ NODE_COUNT = NODE_CONFIG["workers"]["count"]
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ["vagrant-reload", "vagrant-vbguest"]
-
-  config.vbguest.auto_update = false
-  config.vm.provision "shell", privileged: true, path: "./scripts/setup_alpine.sh"
-  config.vm.provision :reload
-  config.vm.provision "shell", privileged: true, path: "./scripts/setup_user.sh"
-  config.vm.provision "file", source: "./.ssh/id_rsa", destination: "/tmp/id_rsa"
-  config.vm.provision "file", source: "./.ssh/id_rsa.pub", destination: "/tmp/id_rsa.pub"
-  config.vm.provision "shell", privileged: true, path: "./scripts/setup_ssh.sh"
+  setup_common config
 
   config.vm.define "front_lb" do |traefik|
-    traefik.vm.box = IMAGE
-    traefik.vm.hostname = "traefik"
-    traefik.vm.network :private_network, ip: VIP
+    setup_vm(vm: traefik, hostname: "traefik", ip: VIP, image: IMAGE)
     traefik.vm.network "forwarded_port", guest: 6443, host: 6443
 
-    traefik.vm.provision "file", source: "./scripts/traefik/dynamic_conf.toml", destination: "/tmp/traefikconf/dynamic_conf.toml"
-    traefik.vm.provision "file", source: "./scripts/traefik/static_conf.toml", destination: "/tmp/traefikconf/static_conf.toml"
-    traefik.vm.provision "shell", privileged: true, path: "./scripts/setup_lb.sh"
-    traefik.vm.provider :virtualbox do |vb|
-      vb.customize ["modifyvm", :id, "--memory", NODE_CONFIG["lb"]["resources"]["memory"]]
-      vb.customize ["modifyvm", :id, "--cpus", NODE_CONFIG["lb"]["resources"]["cpu"]]
-    end
+    provision_file(vm: traefik, src: "./scripts/traefik/dynamic_conf.toml", dest: "/tmp/traefikconf/dynamic_conf.toml")
+    provision_file(vm: traefik, src: "./scripts/traefik/static_conf.toml", dest: "/tmp/traefikconf/static_conf.toml")
+    provision_script(vm: traefik, path: "./scripts/setup_lb.sh")
+    setup_resources(vm: traefik, cpus:  NODE_CONFIG["lb"]["resources"]["cpu"], memory: NODE_CONFIG["lb"]["resources"]["memory"])
   end
 
   FN_IP = ""
@@ -41,32 +33,37 @@ Vagrant.configure("2") do |config|
     config.vm.define "kubemaster#{i}" do |kubemasters|
       ID = i + 10
       IP = "#{IP_RANGE}#{ID}"
-      kubemasters.vm.box = IMAGE
-      kubemasters.vm.hostname = "kubemaster#{i}"
-      kubemasters.vm.network :private_network, ip: IP
-      kubemasters.vm.provider :virtualbox do |vb|
-        vb.customize ["modifyvm", :id, "--memory", NODE_CONFIG["masters"]["resources"]["memory"]]
-        vb.customize ["modifyvm", :id, "--cpus", NODE_CONFIG["masters"]["resources"]["cpu"]]
-      end
+      setup_vm(vm: kubemasters, hostname: "kubemaster#{i}", ip: IP, image: IMAGE)
+      setup_resources(vm: kubemasters, 
+                      cpus: NODE_CONFIG["masters"]["resources"]["cpu"], 
+                      memory: NODE_CONFIG["masters"]["resources"]["memory"])
+      
+      provision_file(vm: kubemasters, src:  "./scripts/manifests/.", dest: "/tmp/manifests/")
+      
+      provision_optionals(vm: kubemasters, 
+                          registry_config: NODE_CONFIG["local_registry"], 
+                          repository_config: NODE_CONFIG["git_repo"])
 
-      kubemasters.vm.provision "file", source: "./scripts/manifests/.", destination: "/tmp/manifests/"
-      if NODE_CONFIG["local_registry"]["enabled"] == true
-        kubemasters.vm.provision "file", source: "./scripts/optional/local-repository.yaml", destination: "/tmp/manifests/local_registry.yaml"
-        kubemasters.vm.provision "file", source: "./scripts/optional/registries.yaml", destination: "/tmp/manifests/registries.yaml"
-        kubemasters.vm.provision "shell", privileged: true, inline: "mkdir -p /etc/rancher/k3s/ && mv /tmp/manifests/registries.yaml /etc/rancher/k3s/registries.yaml"
-        kubemasters.vm.provision "shell", privileged: true, inline: "echo \"#{VIP} #{NODE_CONFIG["local_registry"]["host"]}\" >> /etc/hosts"
+      provision_vip_config(vm: kubemasters)
+      def configure_trigger_run (trigger:, info: "", path:, args: "")
+        if info != ""
+          trigger.info = info
+        end
+        trigger.run = { path: path, args: args }
       end
-      kubemasters.vm.provision "shell", privileged: true, inline: "curl https://kube-vip.io/manifests/rbac.yaml > /tmp/manifests/_rbac.yaml"
-      kubemasters.vm.provision "shell", privileged: true, inline: "mkdir -p /var/lib/rancher/k3s/server/manifests && mv /tmp/manifests/*.yaml /var/lib/rancher/k3s/server/manifests/"
       kubemasters.trigger.after :up do |t|
+        info = ""
+        args = ""
         if i == 1
           FN_IP = IP
-          t.info = "m#{ID} Provisioning: Init Cluster. HOST:kubemaster#{i}, IP: #{IP}, args: init #{IP} #{VIP} #{K3S_VERSION}"
-          t.run = { path: "scripts/provision.sh", args: "--action init --interface #{NODE_CONFIG["interface"]} --ip #{IP} --vip #{VIP} --version #{K3S_VERSION} --token #{NODE_CONFIG["token"]}" }
+          info = "m#{ID} Provisioning: Init Cluster. HOST:kubemaster#{i}, IP: #{IP}, args: init #{IP} #{VIP} #{K3S_VERSION}"
+          args = "--action init --interface #{NODE_CONFIG["interface"]} --ip #{IP} --vip #{VIP} --version #{K3S_VERSION} --token #{NODE_CONFIG["token"]}" 
         elsif i > 1
-          t.info = "m#{ID} Provisioning: New Master Node. HOST:kubemaster#{i}, IP: #{IP}, args: join #{IP} #{VIP} #{K3S_VERSION} #{FN_IP}"
-          t.run = { path: "scripts/provision.sh", args: "--action join --interface #{NODE_CONFIG["interface"]} --ip #{IP} --vip #{VIP} --version #{K3S_VERSION} --sip #{FN_IP} --token #{NODE_CONFIG["token"]}" }
+          info = "m#{ID} Provisioning: New Master Node. HOST:kubemaster#{i}, IP: #{IP}, args: join #{IP} #{VIP} #{K3S_VERSION} #{FN_IP}"
+          args = "--action join --interface #{NODE_CONFIG["interface"]} --ip #{IP} --vip #{VIP} --version #{K3S_VERSION} --sip #{FN_IP} --token #{NODE_CONFIG["token"]}" 
         end
+
+        configure_trigger_run(trigger: t, info: info, path:  "scripts/provision.sh", args: args)
       end
     end
   end
@@ -76,22 +73,20 @@ Vagrant.configure("2") do |config|
       ID = i + 20
       IP = "#{IP_RANGE}#{ID}"
 
-      kubenodes.vm.box = IMAGE
-      kubenodes.vm.hostname = "kubenode#{i}"
-      kubenodes.vm.network :private_network, ip: IP
-      kubenodes.vm.provider :virtualbox do |vb|
-        vb.customize ["modifyvm", :id, "--memory", NODE_CONFIG["workers"]["resources"]["memory"]]
-        vb.customize ["modifyvm", :id, "--cpus", NODE_CONFIG["workers"]["resources"]["cpu"]]
-      end
-      if NODE_CONFIG["local_registry"]["enabled"] == true
-        kubenodes.vm.provision "file", source: "./scripts/optional/registries.yaml", destination: "/tmp/manifests/registries.yaml"
-        kubenodes.vm.provision "shell", privileged: true, inline: "mkdir -p /etc/rancher/k3s/ && mv /tmp/manifests/registries.yaml /etc/rancher/k3s/registries.yaml"
-        kubenodes.vm.provision "shell", privileged: true, inline: "echo \"#{VIP} #{NODE_CONFIG["local_registry"]["host"]}\" >> /etc/hosts"
-      end
+      setup_vm(vm: kubenodes, hostname: "kubenode#{i}", ip: IP, image: IMAGE)
+      setup_resources(vm: kubenodes, 
+                      cpus: NODE_CONFIG["workers"]["resources"]["cpu"], 
+                      memory: NODE_CONFIG["workers"]["resources"]["memory"])
+      provision_optionals(vm: kubenodes, 
+                          registry_config: NODE_CONFIG["local_registry"], 
+                          repository_config: NODE_CONFIG["git_repo"],
+                          is_master: false)
       kubenodes.trigger.after :up do |t|
-        t.info = "w#{i} Provisioning: Worker. HOST:kubenode#{i}, IP: #{IP}, args worker #{IP} #{VIP} #{K3S_VERSION}"
-        t.run = { path: "scripts/provision.sh", args: "--action worker --interface #{NODE_CONFIG["interface"]} --ip #{IP} --vip #{VIP} --version #{K3S_VERSION} --token #{NODE_CONFIG["token"]}" }
+        info = "w#{i} Provisioning: Worker. HOST:kubenode#{i}, IP: #{IP}, args worker #{IP} #{VIP} #{K3S_VERSION}"
+        args = "--action worker --interface #{NODE_CONFIG["interface"]} --ip #{IP} --vip #{VIP} --version #{K3S_VERSION} --token #{NODE_CONFIG["token"]}" 
+        configure_trigger_run(trigger: t, info: info, path:  "scripts/provision.sh", args: args)
       end
     end
   end
 end
+

@@ -3,6 +3,26 @@ kind: Namespace
 metadata:
   name: local-registry
 ---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: localregistry-ingress
+  namespace: local-registry
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: localregistry.lc
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: local-registry-docker-registry
+            port:
+              number: 5000
+---
 # Source: docker-registry/templates/secret.yaml
 apiVersion: v1
 kind: Secret
@@ -61,13 +81,12 @@ metadata:
     release: local-registry
     heritage: Helm
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
     - port: 5000
       protocol: TCP
       name: http-5000
       targetPort: 5000
-      nodePort: 30500
   selector:
     app: docker-registry
     release: local-registry

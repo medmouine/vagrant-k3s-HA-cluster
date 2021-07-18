@@ -20,5 +20,9 @@ lb:
     cpu: "1"
 local_registry:
   enabled: true
-  port: 30500
   host: "localregistry.lc"
+  external_ip: "10.0.0.30"
+git_repo:
+  enabled: true
+  host: "localrepository.lc"
+  external_ip: "10.0.0.30"
