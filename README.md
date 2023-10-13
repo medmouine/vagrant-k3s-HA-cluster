@@ -22,9 +22,9 @@
 
 ## Introduction
 
-This repository contains the Vagrantfile and scripts to easely configure a Highly Available Kubernetes (K3s) cluster. 
+This repository contains the Vagrantfile and scripts to easily configure a Highly Available Kubernetes (K3s) cluster. 
 
-The cluster is composed of Controlplane nodes (default: 2), Worker nodes (default: 4), a Controlplane Loadbalancer ([Traefik](https://doc.traefik.io/traefik/providers/overview/)).
+The cluster is composed of Controlplane nodes (default: 2), Worker nodes (default: 4), and a Controlplane Loadbalancer ([Traefik](https://doc.traefik.io/traefik/providers/overview/)).
 
 The k3s default flannel (vxlan) is replaced by [Wireguard](https://www.wireguard.com/) as the base CNI due to an IP Forwarding bug when using K3s in VirtualBox VMs. 
 
@@ -41,7 +41,7 @@ K3s is a lightweight Kubernetes distribution used for Edge-computing and IoT. It
 I built this project in the context of the [Cloud Native applications and DevOps course](https://www.ulaval.ca/etudes/cours/glo-4008-applications-infonuagiques-natives-et-devops) of the Computer Science and Software Engineering department at Laval University. 
 
 After wasting days debugging and finetuning the configuration to achieve a 
-highly available, resource efficient and fully-working cluster, I realized the lack of documentation and resources regarding this use-case.
+highly available, resource efficient, and fully-working cluster, I realized the lack of documentation and resources regarding this use-case.
 
 ### Features
 - [X] High availability (Multiple control-planes) 
@@ -87,7 +87,7 @@ To work properly K3s requires:
 
 However, I highly recommend to provision VMs with more resources. With 1GB memory and 1 CPU controlplanes work fine on Alpine but other linux distros might struggle to keep all the servers up and running. Luckily, this solution offers load balancing to achieve HA so this is not an issue regarding availability of the cluster. However, You may encounter some connection timeouts and latency. This is most likely not an issue with Alpine as it is the most lightweight distro available.
 
-I still recommend allocating more resources especially to the servers to speed up provisionning of the cluster and internal components. 
+I still recommend allocating more resources especially to the servers to speed up the provisioning of the cluster and internal components. 
 
 ### Software
 - [Vagrant](https://www.vagrantup.com/downloads)
@@ -113,7 +113,7 @@ $ vagrant plugin install vagrant-reload
 ## Usage
 
 #### (Optional) Generate VIP config manifest
-Regenerate [Kube-vip](https://kube-vip.io/) manifest with your desired configuration (see [Kube-vip docs](https://kube-vip.io/)) . Edit the `interface` and `vip` arguments if you changed the default configuration. You can use any container engine (ctr, podman...) to do this task.
+Regenerate [Kube-vip](https://kube-vip.io/) manifest with your desired configuration (see [Kube-vip docs](https://kube-vip.io/)). Edit the `interface` and `vip` arguments if you changed the default configuration. You can use any container engine (ctr, podman...) to do this task.
 ```bash
 $ docker run --network host --rm plndr/kube-vip:0.3.1 manifest daemonset \                                                                                               130
   --interface eth1 --controlplane \. 
